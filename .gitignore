@@ -1,0 +1,12 @@
+# Local environment secrets
+.env
+
+# Python virtual environment
+.venv/
+
+# Local generated data
+lp_history.csv
+
+# Bytecode/cache
+__pycache__/
+*.pyc
