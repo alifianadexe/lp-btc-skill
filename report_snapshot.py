@@ -9,6 +9,7 @@ from collections import deque
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TRACKER_PATH = os.path.join(BASE_DIR, "tracker.py")
+AERODROME_TRACKER_PATH = os.path.join(BASE_DIR, "aerodrome_volume_tracker.py")
 HISTORY_PATH = os.path.join(BASE_DIR, "portfolio_history.csv")
 
 
@@ -39,6 +40,19 @@ def run_tracker():
     if res.returncode != 0:
         raise RuntimeError(res.stderr or res.stdout or "tracker failed")
     return res.stdout
+
+
+def run_aerodrome_tracker():
+    res = subprocess.run(["python3", AERODROME_TRACKER_PATH], capture_output=True, text=True, cwd=BASE_DIR)
+    if res.returncode != 0:
+        return {}
+    out = {}
+    for raw in res.stdout.splitlines():
+        line = raw.strip()
+        if "=" in line and not line.startswith("AERODROME_VOLUME_REPORT"):
+            key, value = line.split("=", 1)
+            out[key] = value
+    return out
 
 
 def parse_tracker_output(text: str):
@@ -228,6 +242,7 @@ def main():
     btc_usd, btc_chg = fetch_btc()
     out = run_tracker()
     parsed = parse_tracker_output(out)
+    aerodrome = run_aerodrome_tracker()
 
     now_dt = datetime.now(timezone.utc)
     row = {
@@ -292,8 +307,18 @@ def main():
     print(f"OOR_RISK={parsed['oor_risk']}")
     print(f"SUGGESTED_ACTION={parsed['suggested_action']}")
     print(f"MACRO_TAG={macro_tag}")
-    print(f"WALLET_1_COMBINED={parsed['wallets'][0][1] if len(parsed['wallets']) > 0 else 'N/A'}")
-    print(f"WALLET_2_COMBINED={parsed['wallets'][1][1] if len(parsed['wallets']) > 1 else 'N/A'}")
+    wallet_1_value = parsed['wallets'][0][1] if len(parsed['wallets']) > 0 else 'N/A'
+    wallet_2_value = parsed['wallets'][1][1] if len(parsed['wallets']) > 1 else 'N/A'
+    print(f"WALLET_1_LABEL=active")
+    print(f"WALLET_1_COMBINED={wallet_1_value}")
+    print(f"WALLET_2_LABEL=long_term_hold")
+    print(f"WALLET_2_COMBINED={wallet_2_value}")
+    print(f"AERODROME_POOL_NAME={aerodrome.get('POOL_NAME', 'N/A')}")
+    print(f"AERODROME_POOL_ADDRESS={aerodrome.get('POOL_ADDRESS', 'N/A')}")
+    print(f"AERODROME_VOLUME_USD_24H={aerodrome.get('VOLUME_USD_24H', 'N/A')}")
+    print(f"AERODROME_EST_FEES_USD_24H={aerodrome.get('EST_FEES_USD_24H', 'N/A')}")
+    print(f"AERODROME_RESERVE_USD={aerodrome.get('RESERVE_USD', 'N/A')}")
+    print(f"AERODROME_VOLUME_TVL_RATIO_24H={aerodrome.get('VOLUME_TVL_RATIO_24H', 'N/A')}")
     print(f"ADVICE={advice}")
 
 
